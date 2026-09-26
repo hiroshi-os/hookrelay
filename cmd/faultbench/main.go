@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -27,12 +28,20 @@ func main() {
 	n := flag.Int("n", 10000, "events to push")
 	restarts := flag.Int("restarts", 5, "hookrelay process kill/restarts during run")
 	databaseURL := flag.String("database-url", getenv("DATABASE_URL", ""), "postgres url (empty = embedded Postgres)")
-	chaosAddr := flag.String("chaos-addr", "127.0.0.1:19090", "chaosrecv listen")
-	adminAddr := flag.String("admin-addr", "127.0.0.1:18080", "hookrelay admin listen")
+	chaosAddr := flag.String("chaos-addr", "", "chaosrecv listen (empty = ephemeral)")
+	adminAddr := flag.String("admin-addr", "", "hookrelay admin listen (empty = ephemeral)")
 	secret := flag.String("secret", "fault-secret", "shared secret")
 	outPath := flag.String("out", "bench/RESULTS.md", "results markdown path")
 	binDir := flag.String("bin-dir", "bin", "directory with built binaries")
 	flag.Parse()
+
+	if *chaosAddr == "" {
+		*chaosAddr = freeLocalAddr()
+	}
+	if *adminAddr == "" {
+		*adminAddr = freeLocalAddr()
+	}
+	fmt.Printf("chaos=%s admin=%s\n", *chaosAddr, *adminAddr)
 
 	ctx := context.Background()
 	dsn := *databaseURL
@@ -68,7 +77,7 @@ func main() {
 	chaosCmd.Stderr = os.Stderr
 	must(chaosCmd.Start())
 	defer func() { _ = chaosCmd.Process.Kill() }()
-	time.Sleep(500 * time.Millisecond)
+	waitHTTP("http://"+*chaosAddr+"/stats", 30*time.Second)
 
 	st := store.New(pool)
 	ep, err := st.CreateEndpoint(ctx, "http://"+*chaosAddr+"/", *secret, 32, 10_000)
@@ -297,6 +306,14 @@ func waitHTTP(url string, timeout time.Duration) {
 		time.Sleep(200 * time.Millisecond)
 	}
 	panic("timeout waiting for " + url)
+}
+
+func freeLocalAddr() string {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	must(err)
+	addr := l.Addr().String()
+	_ = l.Close()
+	return addr
 }
 
 func percentile(sorted []float64, p float64) float64 {
