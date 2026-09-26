@@ -85,18 +85,18 @@ Auth: `Authorization: Bearer <ADMIN_TOKEN>` (default `dev-admin-token`).
 
 ## Measured numbers
 
-From a run recorded in [`bench/RESULTS.md`](bench/RESULTS.md) (fill after
-`make fault` on this machine — see that file for hardware, commit SHA, and
-exact command). Until that run completes, prefer the CI artifact from the
-`fault` job (`bench/CI_RESULTS.md`, 500 events / 1 restart).
+From [`bench/RESULTS.md`](bench/RESULTS.md) on this machine (commit `d0f44fc`,
+2026-09-26 UTC). Hardware: AMD Ryzen 5 7530U, 12 logical CPUs, 23873 MiB RAM,
+windows/amd64. Command: `faultbench -n 10000 -restarts 5`.
 
 | Metric | Value |
 | --- | --- |
-| Delivered % | see RESULTS.md |
-| Lost events | see RESULTS.md (must be 0) |
-| Duplicate deliveries | see RESULTS.md |
-| DLQ count | see RESULTS.md |
-| E2E delay p50 / p99 | see RESULTS.md |
+| Delivered % | 100.0000% (10000 / 10000) |
+| Lost events | 0 |
+| Duplicate deliveries | 0 |
+| DLQ count | 0 |
+| E2E delay p50 / p99 | 263.9354 s / 455.1377 s |
+| Restarts performed | 5 |
 
 ## Honesty / limitations
 
