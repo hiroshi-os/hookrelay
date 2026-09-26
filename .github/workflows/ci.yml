@@ -1,0 +1,85 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "feat/**", "cursor/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hookrelay
+          POSTGRES_PASSWORD: hookrelay
+          POSTGRES_DB: hookrelay_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hookrelay -d hookrelay_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgres://hookrelay:hookrelay@localhost:5432/hookrelay_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22.x"
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "gofmt needed on:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      - name: test
+        run: go test -race -count=1 ./...
+
+  fault:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hookrelay
+          POSTGRES_PASSWORD: hookrelay
+          POSTGRES_DB: hookrelay
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hookrelay -d hookrelay"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgres://hookrelay:hookrelay@localhost:5432/hookrelay?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22.x"
+      - name: build
+        run: |
+          mkdir -p bin
+          go build -o bin/hookrelay ./cmd/hookrelay
+          go build -o bin/chaosrecv ./cmd/chaosrecv
+          go build -o bin/faultbench ./cmd/faultbench
+      - name: small fault run
+        run: |
+          ./bin/faultbench -n 500 -restarts 1 -out bench/CI_RESULTS.md \
+            -database-url "$DATABASE_URL" \
+            -chaos-addr 127.0.0.1:19090 \
+            -admin-addr 127.0.0.1:18080
+      - name: upload CI fault results
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-fault-results
+          path: bench/CI_RESULTS.md

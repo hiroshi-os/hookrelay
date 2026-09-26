@@ -1,0 +1,21 @@
+﻿# Binaries
+/bin/
+/hookrelay
+/chaosrecv
+/faultbench
+*.exe
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local env / data
+.env
+.tmp/
+*.log
+bench/last.json
+
+# Embedded postgres cache
+/embedded-postgres-data/
