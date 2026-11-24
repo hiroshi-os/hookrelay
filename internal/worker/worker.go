@@ -47,9 +47,14 @@ func (r *Runner) rand() *rand.Rand {
 }
 
 // Run blocks until ctx is cancelled.
+// Workers == 0 means API-only (no delivery loops). Negative values default to 1.
 func (r *Runner) Run(ctx context.Context) {
-	if r.Workers <= 0 {
+	if r.Workers < 0 {
 		r.Workers = 1
+	}
+	if r.Workers == 0 {
+		<-ctx.Done()
+		return
 	}
 	var wg sync.WaitGroup
 	for i := 0; i < r.Workers; i++ {

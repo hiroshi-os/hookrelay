@@ -98,15 +98,22 @@ windows/amd64. Command: `faultbench -n 10000 -restarts 5`.
 | E2E delay p50 / p99 | 263.9354 s / 455.1377 s |
 | Restarts performed | 5 |
 
+## AWS (dev stack)
+
+Terraform under [`terraform/`](terraform/) provisions ALB → ECS/Fargate API + workers → RDS PostgreSQL with Secrets Manager, CloudWatch, and a budget alarm. See [`docs/AWS.md`](docs/AWS.md) for architecture, cost warning, OIDC CI notes, and the verification checklist.
+
+`WORKERS=0` runs API-only (no delivery loops); worker tasks use `WORKERS>=1`. **Do not claim AWS on a resume until a real apply + verification row is recorded in `docs/AWS.md`.**
+
 ## Honesty / limitations
 
 - Delivery is **at-least-once**, not exactly-once. Receivers must dedupe by
   stable event `id`.
 - **Ordering is not guaranteed** across endpoints or after retries.
-- Single-node Postgres; no multi-region / no HA story in this repo.
+- Single-node Postgres locally; AWS cut is single-AZ RDS for cost, not multi-region HA.
 - Auto-disable is per-endpoint consecutive failures, not a circuit breaker with
   half-open probing.
 - `chaosrecv` failure rates are probabilistic; exact mixes vary by seed.
+- AWS ALB is HTTP-only in this first cut; put auth in front before shared use.
 
 ## Layout
 
